@@ -104,9 +104,9 @@ const WTModalPower = ({ bolShow, SetShow }) => {
 
    const callback = (objData) => {
       SetResult(objData);
-      setTimeout(()=>{
+      setTimeout(() => {
          SetResult({});
-      },3000);
+      }, 3000);
    }
    return (
       <Modal centered show={bolShow} onHide={() => SetShow(false)}>
