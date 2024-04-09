@@ -4,6 +4,7 @@ import { IconContext } from 'react-icons';
 import { Modal, Form, Alert } from 'react-bootstrap';
 import RangeSlider from 'react-range-slider-input';
 import 'react-range-slider-input/dist/style.css';
+import { CgScreen } from 'react-icons/cg';
 
 function App() {
    const [bolShowPower, SetShowPower] = useState(false);
@@ -12,14 +13,19 @@ function App() {
       <>
          <div className="d-flex flex-column align-items-center">
             <IconContext.Provider value={{ color: "red", size: "4em" }}>
-               <div className="mt-5 mb-5">
+               <div className="my-5">
                   <IoPower onClick={() => {
                      SetShowPower(true);
                   }} />
                </div>
-               <div className="mt-5">
+               <div className="my-5">
                   <IoVolumeHigh onClick={() => {
                      SetShowVolumn(true);
+                  }} />
+               </div>
+               <div className="my-5">
+                  <CgScreen onClick={() => {
+                     SendCommand({ "command": "nircmdc", "parameter": "monitor off" })
                   }} />
                </div>
             </IconContext.Provider>
