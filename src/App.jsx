@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { IoCaretBack, IoCaretForward, IoPower, IoReload, IoStopCircleOutline, IoStopOutline, IoVolumeHigh } from 'react-icons/io5';
 import { IconContext } from 'react-icons';
-import { Modal, Form, Alert } from 'react-bootstrap';
+import { Modal, Form, Alert, ListGroup } from 'react-bootstrap';
 import RangeSlider from 'react-range-slider-input';
 import 'react-range-slider-input/dist/style.css';
 import { CgScreen } from 'react-icons/cg';
@@ -9,6 +9,17 @@ import { CgScreen } from 'react-icons/cg';
 function App() {
    const [bolShowPower, SetShowPower] = useState(false);
    const [bolShowVolumn, SetShowVolumn] = useState(false);
+   const [arrLogs, SetLogs] = useState([]);
+   useEffect(() => {
+      RefreshCommandLog();
+   }, []);
+
+   const RefreshCommandLog = () => {
+      SendCommand({ "command": "getCommandLogs" }, (objData) => {
+         SetLogs((objData?.commands || []).reverse());
+      });
+   }
+
    return (
       <>
          <div className="d-flex flex-column align-items-center">
@@ -25,12 +36,20 @@ function App() {
                </div>
                <div className="my-5">
                   <CgScreen onClick={() => {
-                     SendCommand({ "command": "nircmdc", "parameter": "monitor off" })
+                     SendCommand({ "command": "nircmdc", "parameter": "monitor off" }, RefreshCommandLog);;
                   }} />
                </div>
             </IconContext.Provider>
          </div>
-         <WTModalPower bolShow={bolShowPower} SetShow={SetShowPower} />
+         <ListGroup className="px-2">
+            {arrLogs.map((log, index) => (
+               <ListGroup.Item key={index}>
+                  {log}
+               </ListGroup.Item>
+            ))}
+         </ListGroup>
+
+         <WTModalPower bolShow={bolShowPower} SetShow={SetShowPower} RefreshCommandLog={RefreshCommandLog}/>
          <WTVolumeModal bolShow={bolShowVolumn} SetShow={SetShowVolumn} />
       </>
    )
@@ -43,41 +62,46 @@ const SendCommand = (objBody, callback = () => { }) => {
       .then(objData => objData.json())
       .then(callback);
 }
+
 const WTVolumeModal = ({ bolShow, SetShow }) => {
-   const [arrValue, SetValue] = useState([0, 100]);
-   const [arrPrevious, SetPrevious] = useState([0, 100]);
+   const [intValue, SetValue] = useState(100);
    const [strStep, SetStep] = useState("10");
 
+   useEffect(() => {
+      SendCommand({ "command": "getVolume" }, objData => {
+         SetValue(objData?.volume || 100);
+      });
+   }, []);
    const SendVolume = (intVolume) => {
-      SendCommand({ "command": "nircmdc", "parameter": `changesysvolume ${intVolume * 65535 / 100}` });
+      SendCommand({ "command": "nircmdc", "parameter": "changesysvolume", "volume": intVolume });
    }
    return (
       <Modal centered show={bolShow} onHide={() => SetShow(false)}>
          <Modal.Body className="d-flex flex-column align-items-center">
+            <div className="d-flex align-items-center">{intValue}</div>
             <RangeSlider
                min={0}
                max={100}
-               value={arrValue}
+               value={[0, intValue]}
                thumbsDisabled={[true, false]}
                rangeSlideDisabled={true}
                onInput={(arrValue) => {
-                  SetValue(arrValue)
+                  SetValue(arrValue[1])
                }}
                onThumbDragEnd={() => {
-                  SendVolume(arrValue[1]);
-                  SetPrevious(arrValue);
+                  SendVolume(intValue);
                }}
             />
             <div className="d-flex align-items-center my-4">
                <IconContext.Provider value={{ color: "red", size: "2em", className: "me-4" }}>
                   <div>
                      <IoCaretBack onClick={() => {
-                        const intValue = arrValue[1] - +(strStep || 0);
-                        SendVolume(intValue);
-                        if (intValue > 0) {
-                           SetValue([arrValue[0], intValue]);
+                        const intDifValue = intValue - +(strStep || 0);
+                        SendVolume(intDifValue);
+                        if (intDifValue > 0) {
+                           SetValue(intDifValue);
                         } else {
-                           SetValue([arrValue[0], 0]);
+                           SetValue(0);
                         }
                      }} />
                   </div>
@@ -86,12 +110,12 @@ const WTVolumeModal = ({ bolShow, SetShow }) => {
                <IconContext.Provider value={{ color: "red", size: "2em", className: "ms-4" }}>
                   <div>
                      <IoCaretForward onClick={() => {
-                        const intValue = arrValue[1] + +(strStep || 0);
-                        SendVolume(intValue);
-                        if (intValue < 100) {
-                           SetValue([arrValue[0], intValue]);
+                        const intDifValue = intValue + +(strStep || 0);
+                        SendVolume(intDifValue);
+                        if (intDifValue < 100) {
+                           SetValue(intDifValue);
                         } else {
-                           SetValue([arrValue[0], 100]);
+                           SetValue(100);
                         }
                      }} />
                   </div>
@@ -104,7 +128,7 @@ const WTVolumeModal = ({ bolShow, SetShow }) => {
 
 
 
-const WTModalPower = ({ bolShow, SetShow }) => {
+const WTModalPower = ({ bolShow, SetShow, RefreshCommandLog }) => {
    const [strDelay, SetDelay] = useState("120");
    const [objResult, SetResult] = useState({});
 
@@ -112,6 +136,7 @@ const WTModalPower = ({ bolShow, SetShow }) => {
       SetResult(objData);
       setTimeout(() => {
          SetResult({});
+         RefreshCommandLog();
       }, 3000);
    }
    return (
